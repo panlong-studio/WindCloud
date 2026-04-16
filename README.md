@@ -38,10 +38,10 @@ gantt
 ## 🛠️ 技术栈
 
 - **语言**: C (C99/C11)
-- **环境**: Linux (Ubuntu), VS Code Remote-SSH
+- **环境**: Linux (Ubuntu)
 - **网络**: 高并发 Epoll 模型, TCP Socket
-- **数据库**: MySQL/SQLite (管理虚拟文件元数据)
-- **安全**: 2FA 身份验证、Hash 指纹校验
+- **数据库**: MySQL
+
 
 ## 🤝 团队协作与贡献规范 (PR-Only)
 
