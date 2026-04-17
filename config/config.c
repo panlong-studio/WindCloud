@@ -1,4 +1,5 @@
 #include <my_header.h>
+#include <stdint.h>
 #include <strings.h>
 #include "config.h"
 
@@ -25,3 +26,15 @@ int get_target(char *key, char *value){
     return 0;
 }
 
+/* 使用方法 */
+/* int main(){ */
+/*     char target[100]; */
+/*     bzero(target,sizeof(target)); */
+/*     get_target("ip",target); */
+/*     printf("ip=%s\n",target); */
+/* /1* 可以不用重新设置，直接清空数组即可 *1/ */
+/*     bzero(target,sizeof(target)); */
+/*     get_target("port",target); */
+/*     printf("port=%s\n",target); */
+
+/* } */
