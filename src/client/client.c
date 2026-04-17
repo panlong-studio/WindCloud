@@ -1,13 +1,19 @@
 #include <my_header.h>
 #include "client_socket.h"
 #include "file_trans.h"
+#include "config.h"
 
 #define BUFFER_SIZE 4096
 
 int main(int argc, char *argv[])
 {
-    char *ip = "192.168.100.128";
-    char *port = "12345";
+    char ip[64] = {0};     // 修改：分配内存而不是指针
+    get_target("ip", ip);
+    printf("ip=%s\n", ip);
+
+    char port[64] = {0};   // 修改：分配内存
+    get_target("port", port);  // 修改：应该是"port"不是"ip"
+    printf("port=%s\n", port);
 
     int sock_fd = 0;
     init_socket(&sock_fd, &ip, &port);
