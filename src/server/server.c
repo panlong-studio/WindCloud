@@ -6,6 +6,7 @@
 #include "worker.h"
 #include "epoll.h"
 #include "socket.h"
+#include "../include/config.h"
 
 int pipe_fd[2];
 
@@ -15,9 +16,17 @@ void func(int num){
 }
 
 int main(){
-    //
-    char *ip = "192.168.100.128";
-    char *port = "12345";
+    char* target;
+    bzero(target,sizeof(target));
+    get_target("ip",target);
+    char *ip = target;
+    printf("ip=%s\n",target);
+
+    bzero(target,sizeof(target));
+    get_target("port",target);
+    char *port = target;
+    printf("ip=%s\n",target);
+
 
     pipe(pipe_fd);
     //父进程，若收到sigint指令，执行func之后exit退出进程
