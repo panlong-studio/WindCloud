@@ -53,9 +53,9 @@ void log_write(int level, const char* file, int line, const char* func,
 
 
 //宏接口
-#define LOG_DEBUG(fmt, ...) do{log_write(LOG_LEVEL_DEBUG, __FILE__, __LINE__, __FUNCTION__, fmt, ##__VA_ARGS__)}while(0)
-#define LOG_INFO(fmt, ...)  do{log_write(LOG_LEVEL_INFO,  __FILE__, __LINE__, __FUNCTION__, fmt, ##__VA_ARGS__)}while(0)
-#define LOG_WARN(fmt, ...)  do{log_write(LOG_LEVEL_WARN,  __FILE__, __LINE__, __FUNCTION__, fmt, ##__VA_ARGS__)}while(0)
-#define LOG_ERROR(fmt, ...) do{log_write(LOG_LEVEL_ERROR, __FILE__, __LINE__, __FUNCTION__, fmt, ##__VA_ARGS__)}while(0)
+#define LOG_DEBUG(fmt, ...) do{log_write(LOG_LEVEL_DEBUG, __FILE__, __LINE__, __FUNCTION__, fmt, ##__VA_ARGS__);}while(0)
+#define LOG_INFO(fmt, ...)  do{log_write(LOG_LEVEL_INFO,  __FILE__, __LINE__, __FUNCTION__, fmt, ##__VA_ARGS__);}while(0)
+#define LOG_WARN(fmt, ...)  do{log_write(LOG_LEVEL_WARN,  __FILE__, __LINE__, __FUNCTION__, fmt, ##__VA_ARGS__);}while(0)
+#define LOG_ERROR(fmt, ...) do{log_write(LOG_LEVEL_ERROR, __FILE__, __LINE__, __FUNCTION__, fmt, ##__VA_ARGS__);}while(0)
 
 #endif 

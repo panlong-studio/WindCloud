@@ -84,7 +84,6 @@ void log_write(int level, const char* file, int line, const char* func, const ch
     fprintf(g_log_fp,"\n");//写入换行符 分隔日志条目
     pthread_mutex_unlock(&g_log_mutex);//解锁
 
-    va_end(args);//结束可变参数处理
 }
 
                
