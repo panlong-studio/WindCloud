@@ -1,5 +1,5 @@
 #include <my_header.h>
-#include "socket.h"
+#include "client_socket.h"
 
 void init_socket(int* listen_fd,char* ip,char* port){
     *listen_fd=socket(AF_INET, SOCK_STREAM, 0);
