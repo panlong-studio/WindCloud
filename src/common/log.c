@@ -1,4 +1,4 @@
-#include "log.h"
+#include "../../include/log.h"
 
 static int g_log_level=LOG_LEVEL_INFO; //将全局级别初始化为默认级别
 static FILE* g_log_fp=NULL;//日志文件初始化为NULL
