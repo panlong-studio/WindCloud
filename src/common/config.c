@@ -1,7 +1,7 @@
 #include <strings.h>
 #include <stdio.h>
 #include <string.h>
-#include "../../include/config.h"
+#include "config.h"
 
 
 int get_target(char *key, char *value) {

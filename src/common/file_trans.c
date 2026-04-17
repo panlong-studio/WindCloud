@@ -1,4 +1,4 @@
-#include "../../include/file_trans.h"
+#include "file_trans.h"
 
 // ==============================================
 // 【通用发送文件】
