@@ -1,5 +1,12 @@
-#include <my_header.h>
-#include "socket.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include "server_socket.h"
+#include "error_check.h"
 
 void init_socket(int* fd,char* ip,char* port){
     *fd=socket(AF_INET,SOCK_STREAM,0);
@@ -11,7 +18,7 @@ void init_socket(int* fd,char* ip,char* port){
     struct sockaddr_in addr;
     memset(&addr,0,sizeof(addr));
     addr.sin_family=AF_INET;
-    addr.sin_port=htonl(atoi(port));
+    addr.sin_port=htons(atoi(port));
     addr.sin_addr.s_addr=inet_addr(ip);
 
     int ret=bind(*fd,&addr,sizeof(addr));

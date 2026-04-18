@@ -1,4 +1,4 @@
-#include <my_header.h>
+#include <stdlib.h>
 #include "queue.h"
 
 int enQueue(queue_t* pQueue,int fd){
@@ -11,6 +11,7 @@ int enQueue(queue_t* pQueue,int fd){
         pQueue->end->pNext=pNew;
         pQueue->end=pNew;
     }
+	pQueue->size++;
     return 0;
 }
 int deQueue(queue_t* pQueue){
@@ -18,11 +19,12 @@ int deQueue(queue_t* pQueue){
         return -1;
     }
     node_t*p=pQueue->head;
+	int fd = p->fd;
     pQueue->head=p->pNext;
     if(pQueue->size==1){
         pQueue->end=NULL;
     }
     pQueue->size--;
     free(p);
-    return 0;
+    return fd;
 }

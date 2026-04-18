@@ -1,5 +1,12 @@
-#include <my_header.h>
-#include "socket.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include "client_socket.h"
+#include "error_check.h"
 
 void init_socket(int* listen_fd,char* ip,char* port){
     *listen_fd=socket(AF_INET, SOCK_STREAM, 0);

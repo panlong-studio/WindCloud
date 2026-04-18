@@ -6,7 +6,7 @@
 #include <pthread.h>
 typedef struct thread_pool{
     int num;
-    pthread_t* threade_id_arr;
+    pthread_t* thread_id_arr;
     queue_t queue;
     pthread_mutex_t lock;
     pthread_cond_t cond;
