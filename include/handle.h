@@ -1,6 +1,6 @@
 #ifndef _HANDLE_H_
 #define _HANDLE_H_
-#include<my_header.h>
+
 #define SERVER_BASE_DIR "./upload"  //磁盘根目录
 void send_response(int client_fd, const char *msg);// 发送到客户端
 
