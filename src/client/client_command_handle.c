@@ -36,14 +36,32 @@ void process_command(int sock_fd, const char *input) {
             return;
         }
         
-        int fd = open(arg, O_WRONLY | O_CREAT | O_TRUNC, 0755);
+      // ---【新增：断点续传逻辑】---
+        struct stat st;
+        off_t local_size = 0;
+        // 检查本地是否已有文件，获取当前大小
+        if (stat(arg, &st) == 0) {
+            local_size = st.st_size;
+        }
+        // 2. 告知服务器：我本地已经有多少了
+        send(sock_fd, &local_size, sizeof(off_t), 0);
+
+        if (local_size >= file_size) {
+            printf("文件已存在且完整，无需下载。\n");
+            return;
+        }
+
+        // 3. 修改：将 O_TRUNC 改为 O_APPEND (追加模式)
+        int fd = open(arg, O_WRONLY | O_CREAT | O_APPEND, 0755);
         if (fd == -1) {
             perror("创建文件失败");
             return;
         }
         
         char buf[BUFFER_SIZE];
-        off_t remaining = file_size;
+        off_t remaining = file_size - local_size; // 剩余大小更新
+       
+        
         while (remaining > 0) {
             int to_read = (remaining < BUFFER_SIZE) ? remaining : BUFFER_SIZE;
             int ret = recv(sock_fd, buf, to_read, MSG_WAITALL);
@@ -74,9 +92,18 @@ void process_command(int sock_fd, const char *input) {
         off_t file_size = st.st_size;
         
         send(sock_fd, &file_size, sizeof(off_t), 0);
+        // ---【新增：断点续传逻辑】---
+        off_t server_offset = 0;
+        // 2. 接收服务器反馈：它那边已经存了多少了
+        recv(sock_fd, &server_offset, sizeof(off_t), MSG_WAITALL);
+
+        // 3. 将本地文件指针移动到服务器要求的断点位置
+        lseek(fd, server_offset, SEEK_SET);
         
+        off_t remaining = file_size - server_offset; // 剩余发送量更新
+        // ---【结束新增】---
         char buf[BUFFER_SIZE];
-        off_t remaining = file_size;
+     
         while (remaining > 0) {
             int to_read = (remaining < BUFFER_SIZE) ? remaining : BUFFER_SIZE;
             int n = read(fd, buf, to_read);
