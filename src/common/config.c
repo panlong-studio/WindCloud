@@ -5,7 +5,7 @@
 
 
 int get_target(char *key, char *value) {
-    FILE *file = fopen("../../config/config.ini", "r");
+    FILE *file = fopen("./config/config.ini", "r");
     if (file == NULL){
         printf("config.ini is NULL\n");
         return -1;

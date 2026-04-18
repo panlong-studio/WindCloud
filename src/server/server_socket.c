@@ -21,7 +21,7 @@ void init_socket(int* fd,char* ip,char* port){
     addr.sin_port=htons(atoi(port));
     addr.sin_addr.s_addr=inet_addr(ip);
 
-    int ret=bind(*fd,&addr,sizeof(addr));
+    int ret=bind(*fd,(struct sockaddr*)&addr,sizeof(addr));
     ERROR_CHECK(ret,-1,"bind");
 
     ret=listen(*fd,10);
