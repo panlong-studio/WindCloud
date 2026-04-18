@@ -1,9 +1,10 @@
+#include <stdio.h>
+#include <unistd.h>
+#include <pthread.h>
 #include "worker.h"
 #include "thread_pool.h"
 #include "queue.h"
 #include "handle.h"
-#include <stdio.h>
-#include <unistd.h>
 
 void* thread_func(void *arg) {
     thread_pool_t *pool = (thread_pool_t *)arg;
@@ -12,7 +13,7 @@ void* thread_func(void *arg) {
         pthread_mutex_lock(&pool->lock);
         
         // 等待任务
-        while (queueIsEmpty(&pool->queue) && !pool->exitFlag) {
+        while (pool->queue.size==0 && !pool->exitFlag) {
             pthread_cond_wait(&pool->cond, &pool->lock);
         }
         
