@@ -1,14 +1,21 @@
-#include <my_header.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 #include <signal.h>
-#include "file_trans.h"
-#include "common.h"
+#include <sys/epoll.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <pthread.h>
 #include "queue.h"
 #include "thread_pool.h"
 #include "worker.h"
 #include "epoll.h"
-#include "socket.h"
+#include "server_socket.h"
 #include "config.h"
-#include "handle.h"      // 添加你的handle头文件
+#include "handle.h"
+#include "error_check.h"
+
 
 int pipe_fd[2];
 
@@ -17,14 +24,18 @@ void func(int num){
     write(pipe_fd[1],"1",1);
 }
 
-int main(){
-    char ip[64] = {0};     // 修改：分配内存而不是指针
+void load_config(char *ip, char *port) {
     get_target("ip", ip);
     printf("ip=%s\n", ip);
 
-    char port[64] = {0};   // 修改：分配内存
-    get_target("port", port);  // 修改：应该是"port"不是"ip"
+    get_target("port", port);
     printf("port=%s\n", port);
+}
+
+int main(){
+    char ip[64] = {0}; 
+    char port[64] = {0};  
+	load_config(ip, port);
 
     pipe(pipe_fd);
     
@@ -39,7 +50,7 @@ int main(){
 
     // 定义监听fd
     int listen_fd = 0;
-    init_socket(&listen_fd, &ip, &port);  // 需要配置文件的IP和port
+    init_socket(&listen_fd, ip, port);  // 需要配置文件的IP和port
 
     // 定义线程池，并初始化
     thread_pool_t pool;
