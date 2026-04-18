@@ -247,7 +247,7 @@ void handle_puts(int listen_fd, char *current_path, char *arg){
     send(listen_fd, &local_size, sizeof(off_t), 0);
 
     // 5. 计算还需要接收的字节数
-    off_t remaining = client_file_size - local_size;
+    off_t remaining = file_len - local_size;
     if (remaining <= 0) {
         printf("文件已存在且完整，无需续传。\n");
         close(file_fd);
@@ -257,7 +257,7 @@ void handle_puts(int listen_fd, char *current_path, char *arg){
     // 6. 【核心】预展文件大小
     // mmap 必须映射有实际物理磁盘空间的文件，否则写入会报 SIGBUS 错误。
     // 我们直接将文件拉伸到最终目标大小。
-    if (ftruncate(file_fd, client_file_size) == -1) {
+    if (ftruncate(file_fd, file_len) == -1) {
     send_msg(listen_fd, "Error: Server disk full or quota exceeded.");
         close(file_fd);
         return;
@@ -265,7 +265,7 @@ void handle_puts(int listen_fd, char *current_path, char *arg){
 
     // 7. 【核心】建立内存映射
     // 映射整个文件。addr=NULL(系统指定), length=总大小, prot=读写, flags=共享同步, offset=0
-    char *map_ptr = mmap(NULL, client_file_size, PROT_READ | PROT_WRITE, MAP_SHARED, file_fd, 0);
+    char *map_ptr = mmap(NULL, file_len, PROT_READ | PROT_WRITE, MAP_SHARED, file_fd, 0);
     if (map_ptr == MAP_FAILED) {
         send_msg(listen_fd, "Error: Server memory mapping failed.");
         close(file_fd);
@@ -288,7 +288,7 @@ void handle_puts(int listen_fd, char *current_path, char *arg){
     }
 
     // 9. 清理工作
-    munmap(map_ptr, client_file_size);
+    munmap(map_ptr, file_len);
 
     // 【关键】如果是由于断开导致的停止，需将文件缩减到实际收到的大小
     // 这样下次 fstat 获取的 local_size 才是真实的“断点”
