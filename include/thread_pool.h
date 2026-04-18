@@ -1,9 +1,9 @@
 #ifndef _THREAD_POOL_H_
 #define _THREAD_POOL_H_
 
-#include <my_header.h>
+#include <stdint.h>
 #include "queue.h"
-
+#include <pthread.h>
 typedef struct thread_pool{
     int num;
     pthread_t* threade_id_arr;
