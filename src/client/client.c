@@ -7,6 +7,7 @@
 #include <sys/stat.h>
 #include <sys/socket.h>
 #include <errno.h>
+#include <sys/time.h>
 #include "client_socket.h"
 #include "config.h"
 #include "client_command_handle.h"   // 新增头文件
@@ -32,6 +33,15 @@ int main(int argc, char *argv[])
     int sock_fd = 0;
     //client_socket,客户端连接
     init_socket(&sock_fd, ip, port);
+
+    // 设置 Socket 接收超时：5 秒，防止永久阻塞
+    struct timeval tv;
+    tv.tv_sec = 5;
+    tv.tv_usec = 0;
+    if (setsockopt(sock_fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
+        perror("setsockopt SO_RCVTIMEO");
+        // 非致命错误，继续运行
+    }
 
     char input[512];
     

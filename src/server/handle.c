@@ -20,41 +20,54 @@ void send_msg(int client_fd, const char *msg) {
     send(client_fd, msg, len, MSG_NOSIGNAL);
 }
 
-void handle_request(int listen_fd){
+void handle_request(int listen_fd) {
+    char current_path[512] = "/";
+    while (1) {
+        int cmd_len = 0;
+        // 第一步：接收命令长度
+        int ret = recv(listen_fd, &cmd_len, sizeof(int), MSG_WAITALL);
+        if (ret != sizeof(int)) {
+            printf("客户端断开或recv错误, ret=%d\n", ret);
+            break;
+        }
+        if (cmd_len <= 0 || cmd_len >= 512) {
+            send_msg(listen_fd, "无效命令长度");
+            continue;
+        }
 
-    char current_path[512]="/";
-    while(1){
-        int cmd_len=0;
-        // 第一步：接收客户端发来的命令长度
-        recv(listen_fd,&cmd_len,sizeof(int),MSG_WAITALL);
+        char cmd_buf[512] = {0};
+        ret = recv(listen_fd, cmd_buf, cmd_len, MSG_WAITALL);
+        if (ret != cmd_len) {
+            break;
+        }
+        cmd_buf[cmd_len] = '\0';
 
-        char cmd_buf[512]={0};
-        // 第二步：根据收到的长度，接收具体的命令字符串
-        recv(listen_fd,cmd_buf,sizeof(cmd_buf),MSG_WAITALL);
+        // 解析命令
+        char cmd[50] = {0}, arg[100] = {0};
+        sscanf(cmd_buf, "%s %s", cmd, arg);
 
-        // 第三步：解析命令字符串 (拆分出 指令 和 参数)
-        char cmd[50]={0};
-        char arg[100]={0};
-        sscanf(cmd_buf,"%s %s",cmd,arg);
-
-        // 第四步：根据不同的指令，调用不同的处理函数
-        if(strcmp(cmd,"pwd")==0){
-            handle_pwd(listen_fd,current_path);
-        }else if(strcmp(cmd,"cd")==0){
-            handle_cd(listen_fd,current_path,arg);
-        }else if(strcmp(cmd,"ls")==0){
-            handle_ls(listen_fd,current_path);
-        }else if(strcmp(cmd,"gets")==0){
-            handle_gets(listen_fd,current_path,arg);
-        }else if(strcmp(cmd,"rm")==0){
-            handle_rm(listen_fd,current_path,arg);
-        }else if(strcmp(cmd,"mkdir")==0){
-            handle_mkdir(listen_fd,current_path,arg);
-        }else if(strcmp(cmd,"puts")==0){
-            handle_puts(listen_fd,current_path,arg);
+        // 分发命令
+        if (strcmp(cmd, "pwd") == 0) {
+            handle_pwd(listen_fd, current_path);
+        } else if (strcmp(cmd, "cd") == 0) {
+            handle_cd(listen_fd, current_path, arg);
+        } else if (strcmp(cmd, "ls") == 0) {
+            handle_ls(listen_fd, current_path);
+        } else if (strcmp(cmd, "gets") == 0) {
+            handle_gets(listen_fd, current_path, arg);
+        } else if (strcmp(cmd, "rm") == 0) {
+            handle_rm(listen_fd, current_path, arg);
+        } else if (strcmp(cmd, "mkdir") == 0) {
+            handle_mkdir(listen_fd, current_path, arg);
+        } else if (strcmp(cmd, "puts") == 0) {
+            handle_puts(listen_fd, current_path, arg);
+        } else {
+            send_msg(listen_fd, "未知命令");
         }
     }
+    close(listen_fd);
 }
+
 void handle_cd(int listen_fd,char *current_path,char *arg){
 
     if(strlen(arg)==0){

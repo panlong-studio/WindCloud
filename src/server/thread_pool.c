@@ -17,7 +17,7 @@ void init_thread_pool(thread_pool_t* pool,int num){
 
     for(int idx=0;idx<num;++idx){
         int ret=pthread_create(&pool->thread_id_arr[idx],NULL,thread_func,(void*) pool);  //pthread_create的入参：得到的pthread_id存入
-        ERROR_CHECK(ret,-1,"pthread_create");                                                    //②NULL ③thread_func  ④thread_func的入参
+        THREAD_ERROR_CHECK(ret,"pthread_create");                                                    //②NULL ③thread_func  ④thread_func的入参
     }
 
 }
