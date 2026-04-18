@@ -14,10 +14,12 @@
 
 void send_msg(int client_fd, const char *msg) {
     int len = strlen(msg);
-
-    send(client_fd, &len, sizeof(int), MSG_NOSIGNAL);
-
-    send(client_fd, msg, len, MSG_NOSIGNAL);
+if(send(client_fd, &len, sizeof(int), MSG_NOSIGNAL) != sizeof(int)) {
+        return;
+    }
+    if(send(client_fd, msg, len, MSG_NOSIGNAL) != len) {
+        return;
+    }
 }
 
 void handle_request(int listen_fd){
@@ -30,11 +32,14 @@ void handle_request(int listen_fd){
 
         char cmd_buf[512]={0};
         // 第二步：根据收到的长度，接收具体的命令字符串
-        recv(listen_fd,cmd_buf,sizeof(cmd_buf),MSG_WAITALL);
-
+        int ret=recv(listen_fd,cmd_buf,cmd_len,MSG_WAITALL);
+        if(ret != cmd_len) {
+        send_msg(listen_fd,"recv command failed");
+        break;  // 接收失败，退出循环
+        }
         // 第三步：解析命令字符串 (拆分出 指令 和 参数)
-        char cmd[50]={0};
-        char arg[100]={0};
+        char cmd[64]={0};
+        char arg[256]={0};
         sscanf(cmd_buf,"%s %s",cmd,arg);
 
         // 第四步：根据不同的指令，调用不同的处理函数
@@ -62,7 +67,7 @@ void handle_cd(int listen_fd,char *current_path,char *arg){
         return;
     }
 
-    if(strcmp(arg,"..")==0){
+    if(strcmp(arg,"..")==0){ //简单实现暂时只能返回根目录
         strcpy(current_path,"/");
         send_msg(listen_fd,"已返回根目录\n");
         return;
@@ -107,7 +112,7 @@ void handle_ls(int listen_fd,char *current_path){
         return;
     }
     // 遍历目录，把所有文件名拼接到一个大字符串里
-    char result[200]={0};
+    char result[4096]={0};
     while((file=readdir(dir))!= NULL){
         if(strcmp(file->d_name,".")==0 || strcmp(file->d_name,"..")==0){
             continue;
@@ -173,8 +178,10 @@ void handle_gets(int listen_fd, char *current_path, char *arg){
     // 4. 发送文件总大小给客户端
     send(listen_fd,&file_size,sizeof(off_t),MSG_NOSIGNAL);
     // 5. 零拷贝技术：将文件直接从内核发给网卡
-    sendfile(listen_fd,file_fd,NULL,file_size);
-
+    ssize_t sent=sendfile(listen_fd,file_fd,NULL,file_size);
+     if(sent != file_size) {
+    send_msg(lieten_fd,"sendfile failed");
+}
     close(file_fd);
 }
 void handle_puts(int listen_fd, char *current_path, char *arg){
