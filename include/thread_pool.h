@@ -1,7 +1,6 @@
 #ifndef _THREAD_POOL_H_
 #define _THREAD_POOL_H_
 
-#include <stdint.h>
 #include "queue.h"
 #include <pthread.h>
 typedef struct thread_pool{
