@@ -31,7 +31,7 @@ void process_command(int sock_fd, const char *input) {
         off_t file_size = 0;
         recv(sock_fd, &file_size, sizeof(off_t), MSG_WAITALL);
         
-        if (file_size <= 0) {
+        if (file_size < 0) {
             printf("文件不存在或为空\n");
             return;
         }

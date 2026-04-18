@@ -12,13 +12,22 @@
 #include <errno.h>      
 #include "handle.h"
 
-void send_msg(int client_fd, const char *msg) {
+#define SERVER_BASE_DIR "./upload"  //磁盘根目录
+void send_msg(int listen_fd, const char *msg) {
     int len = strlen(msg);
-if(send(client_fd, &len, sizeof(int), MSG_NOSIGNAL) != sizeof(int)) {
+if(send(listen_fd, &len, sizeof(int), MSG_NOSIGNAL) != sizeof(int)) {
         return;
     }
-    if(send(client_fd, msg, len, MSG_NOSIGNAL) != len) {
+    if(send(listen_fd, msg, len, MSG_NOSIGNAL) != len) {
         return;
+    }
+}
+
+void get_real_path(char *res, const char *path, const char *arg) {
+    if (strcmp(path, "/") == 0) {
+        sprintf(res, "%s/%s", SERVER_BASE_DIR, arg);
+    } else {
+        sprintf(res, "%s%s/%s", SERVER_BASE_DIR, path, arg);
     }
 }
 
@@ -28,11 +37,14 @@ void handle_request(int listen_fd){
     while(1){
         int cmd_len=0;
         // 第一步：接收客户端发来的命令长度
-        recv(listen_fd,&cmd_len,sizeof(int),MSG_WAITALL);
-
+        ssize_t ret=recv(listen_fd,&cmd_len,sizeof(int),MSG_WAITALL);
+        if (ret <= 0) {
+            send_msg(listen_fd,"recv client cmd len failed!\n");
+         break;
+        }
         char cmd_buf[512]={0};
         // 第二步：根据收到的长度，接收具体的命令字符串
-        int ret=recv(listen_fd,cmd_buf,cmd_len,MSG_WAITALL);
+        ret=recv(listen_fd,cmd_buf,cmd_len,MSG_WAITALL);
         if(ret != cmd_len) {
         send_msg(listen_fd,"recv command failed");
         break;  // 接收失败，退出循环
@@ -57,6 +69,9 @@ void handle_request(int listen_fd){
             handle_mkdir(listen_fd,current_path,arg);
         }else if(strcmp(cmd,"puts")==0){
             handle_puts(listen_fd,current_path,arg);
+        }else{
+            send_msg(listen_fd,"指令错误!\n");
+            break;
         }
     }
 }
@@ -75,11 +90,7 @@ void handle_cd(int listen_fd,char *current_path,char *arg){
 
     //拼接真实路径
     char real_path[1024]={0};
-    if(strcmp(current_path,"/")==0){
-        sprintf(real_path,"%s/%s",SERVER_BASE_DIR,arg);
-    }else{
-        sprintf(real_path,"%s%s/%s",SERVER_BASE_DIR,current_path,arg);
-    }
+    get_real_path(real_path, current_path, arg);
     // 测试这个文件夹是否存在
     DIR *dir = opendir(real_path);
     if (dir == NULL) {
@@ -144,11 +155,8 @@ void handle_rm(int listen_fd,char *current_path,char *arg){
 void handle_mkdir(int listen_fd,char *current_path,char *arg){
 
     char real_path[1024] = {0};
-    if (strcmp(current_path, "/") == 0) {
-        sprintf(real_path, "%s/%s", SERVER_BASE_DIR, arg);
-    } else {
-        sprintf(real_path, "%s%s/%s", SERVER_BASE_DIR, current_path, arg);
-    }
+   get_real_path(real_path, current_path, arg);
+
     if(mkdir(real_path,0755)==0){
         send_msg(listen_fd,"创建文件夹成功\n");    
     }else{
@@ -158,56 +166,138 @@ void handle_mkdir(int listen_fd,char *current_path,char *arg){
 
 void handle_gets(int listen_fd, char *current_path, char *arg){
 
-    // 1. 拼接并找到服务器上的真实文件
- char real_path[1024] = {0};
-    if (strcmp(current_path, "/") == 0) {
-        sprintf(real_path, "%s/%s", SERVER_BASE_DIR, arg);
-    } else {
-        sprintf(real_path, "%s%s/%s", SERVER_BASE_DIR, current_path, arg);
+char real_path[1024];
+    // 1. 拼接服务器本地的真实路径
+    get_real_path(real_path, current_path, arg);
+
+    // 2. 以只读方式打开服务器上的文件
+    int file_fd = open(real_path, O_RDONLY);
+    if (file_fd == -1) {
+        // 如果文件不存在
+        send_msg(listen_fd, "Error: File not found on server.");
+        return;
     }
-    // 2. 尝试打开文件
-     int file_fd = open(real_path, O_RDONLY);
-     if(file_fd==-1){
-         send_msg(listen_fd,"文件未找到");
-         return;
-     }
-    // 3. 获取文件大小
+
+    // 3. 获取服务器文件的完整信息（主要是总大小）
     struct stat st;
-    fstat(file_fd,&st);
-    off_t file_size=st.st_size;
-    // 4. 发送文件总大小给客户端
-    send(listen_fd,&file_size,sizeof(off_t),MSG_NOSIGNAL);
-    // 5. 零拷贝技术：将文件直接从内核发给网卡
-    ssize_t sent=sendfile(listen_fd,file_fd,NULL,file_size);
-     if(sent != file_size) {
-    send_msg(lieten_fd,"sendfile failed");
-}
-    close(file_fd);
-}
-void handle_puts(int listen_fd, char *current_path, char *arg){
-// 1. 客户端那边会先发来这个文件有多大，我们先接收大小
-    off_t file_size=0;
-    recv(listen_fd,&file_size,sizeof(off_t),MSG_WAITALL);
+    fstat(file_fd, &st);
+    off_t file_total_size = st.st_size;
 
-    // 2. 拼接服务器要保存的真实路径
-    char real_path[1024] = {0};
-    if (strcmp(current_path, "/") == 0) {
-        sprintf(real_path, "%s/%s", SERVER_BASE_DIR, arg);
-    } else {
-        sprintf(real_path, "%s%s/%s", SERVER_BASE_DIR, current_path, arg);
+    // 4. 向客户端发送文件总大小，让客户端知道文件有多大
+    send(listen_fd, &file_total_size, sizeof(off_t), 0);
+
+    // 5. 接收客户端发来的“断点位置”（Offset）
+    // 如果是第一次下载，客户端发 0；如果是续传，客户端发已有的文件大小
+    off_t offset = 0;
+    if (recv(listen_fd, &offset, sizeof(off_t), MSG_WAITALL) <= 0) {
+        close(file_fd);
+        return;
     }
 
-    // 3. 在服务器创建这个同名文件，准备写入
-    int file_fd=open(real_path,O_RDWR | O_CREAT | O_TRUNC,0755);
+    // 6. 计算还需要发送的剩余字节数
+    off_t remaining = file_total_size - offset;
     
-    // 4. 将文件扩充到目标大小，防止 mmap 越界
-    ftruncate(file_fd,file_size);
+    // 7. 使用 sendfile 实现高效传输
+    // 注意：sendfile 的第三个参数 &offset 会自动从该位置开始读取，
+    // 并且在发送完成后，offset 会被自动更新。
+    while (remaining > 0) {
+        // 参数：目标Socket, 源文件FD, 起始位置指针, 传输长度
+        ssize_t sent = sendfile(listen_fd, file_fd, &offset, remaining);
+        if (sent <= 0) {
+            // sent == -1 且 errno == EAGAIN 表示缓冲区满
+            // sent == 0 表示连接断开
+            break; 
+        }
+        remaining -= sent; // 递减剩余任务量
+    }
 
-     // 5. 将文件映射到内存
-    char *p=(char *)mmap(NULL,file_size,PROT_WRITE | PROT_READ, MAP_SHARED,file_fd,0);
+    close(file_fd); // 传输结束或异常，关闭文件描述符
+    
+}
+    
+    
 
-    // 6. 接收网络数据，直接写进内存映射区，底层自动同步到磁盘
-    recv(listen_fd,p,file_size,MSG_WAITALL);
-    munmap(p,file_size);
+void handle_puts(int listen_fd, char *current_path, char *arg){
+
+    char real_path[1024];
+    get_real_path(real_path, current_path, arg);
+
+    // 1. 接收客户端告知的文件总大小
+    off_t file_len = 0;
+    if (recv(listen_fd, &file_len, sizeof(off_t), MSG_WAITALL) <= 0){
+        send_msg(listen_fd,"recv client file len failed!\n");
+        return;
+    } ;
+
+    // 2. 以读写模式打开文件（不存在则创建）
+    int file_fd = open(real_path, O_RDWR | O_CREAT, 0666);
+    if (file_fd == -1) {
+        send_msg(listen_fd, "Error: Server failed to create file.");
+        return;
+    }
+
+    // 3. 【断点检测】获取服务器本地目前已存在的文件大小
+    struct stat st;
+    off_t local_size = 0;
+    if (fstat(file_fd, &st) == 0) {
+        local_size = st.st_size;
+    }
+
+    // 4. 【协议同步】告知客户端：我这已有 local_size，你从这里开始传
+    send(listen_fd, &local_size, sizeof(off_t), 0);
+
+    // 5. 计算还需要接收的字节数
+    off_t remaining = client_file_size - local_size;
+    if (remaining <= 0) {
+        printf("文件已存在且完整，无需续传。\n");
+        close(file_fd);
+        return;
+    }
+
+    // 6. 【核心】预展文件大小
+    // mmap 必须映射有实际物理磁盘空间的文件，否则写入会报 SIGBUS 错误。
+    // 我们直接将文件拉伸到最终目标大小。
+    if (ftruncate(file_fd, client_file_size) == -1) {
+    send_msg(listen_fd, "Error: Server disk full or quota exceeded.");
+        close(file_fd);
+        return;
+    }
+
+    // 7. 【核心】建立内存映射
+    // 映射整个文件。addr=NULL(系统指定), length=总大小, prot=读写, flags=共享同步, offset=0
+    char *map_ptr = mmap(NULL, client_file_size, PROT_READ | PROT_WRITE, MAP_SHARED, file_fd, 0);
+    if (map_ptr == MAP_FAILED) {
+        send_msg(listen_fd, "Error: Server memory mapping failed.");
+        close(file_fd);
+        return;
+    }
+
+    // 8. 【接收数据】直接将 Socket 数据收进映射区对应的偏移位置
+    char *write_start = map_ptr + local_size; // 指针偏移到断点位置
+    off_t received_count = 0;
+
+    while (received_count < remaining) {
+        // 直接 recv 到 mmap 映射的内存地址，省去了从用户缓冲区到内核缓冲区的拷贝
+        ssize_t ret = recv(listen_fd, write_start + received_count, remaining - received_count, 0);
+        if (ret <= 0) {
+            // 如果连接断开，received_count 记录了本次实际收到的字节数
+            send_msg(listen_fd,"传输中断，已保存当前进度。\n");
+            break;
+        }
+        received_count += ret;
+    }
+
+    // 9. 清理工作
+    munmap(map_ptr, client_file_size);
+
+    // 【关键】如果是由于断开导致的停止，需将文件缩减到实际收到的大小
+    // 这样下次 fstat 获取的 local_size 才是真实的“断点”
+    if (received_count < remaining) {
+        ftruncate(file_fd, local_size + received_count);
+    } else {
+        printf("上传完成！\n");
+    }
+
     close(file_fd);
+
 }
