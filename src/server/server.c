@@ -33,6 +33,7 @@ void load_config(char *ip, char *port) {
 }
 
 int main(){
+    signal(SIGPIPE, SIG_IGN);
     char ip[64] = {0}; 
     char port[64] = {0};  
 	load_config(ip, port);

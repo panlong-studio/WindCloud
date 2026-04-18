@@ -71,7 +71,7 @@ void handle_request(int listen_fd){
             handle_puts(listen_fd,current_path,arg);
         }else{
             send_msg(listen_fd,"指令错误!\n");
-            break;
+            continue;
         }
     }
 }
