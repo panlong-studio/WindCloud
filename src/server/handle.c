@@ -295,7 +295,8 @@ void handle_puts(int listen_fd, char *current_path, char *arg){
     if (received_count < remaining) {
         ftruncate(file_fd, local_size + received_count);
     } else {
-        printf("上传完成！\n");
+
+       send_msg(listen_fd," ");
     }
 
     close(file_fd);
